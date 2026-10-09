@@ -2,22 +2,23 @@
 // gitignore.io 主页 —— 对齐遗留 index.leaf + src/js/app.js 的功能：
 // 多选模板、?templates= 预选、Create 跳转 /api/、Download 跳转 /api/f/、Ctrl/Cmd+Enter 生成
 // i18n：17 种语言（对齐遗留 Localizations/），语言切换经 cookie 持久化
+// 样式：scss scoped + BEM + UnoCSS @apply；搜索建议浮层用 Floating UI 定位；选中模板由 Pinia store 管理并持久化
+import { autoUpdate, offset, useFloating } from '@floating-ui/vue'
+
 interface DropdownItem { id: string, text: string }
 
 const { data: templateList } = await useFetch<DropdownItem[]>('/dropdown/templates.json')
-const selected = ref<string[]>([])
 const query = ref('')
+const store = useTemplatesStore()
+const { selected, toggle, files } = store
+
 // 对齐遗留 app.js 的 BASE_PREFIX：去掉尾部斜杠，避免 baseURL='/' 时拼出 '//api/...' 被解析为协议相对 URL
 const baseURL = useRuntimeConfig().app.baseURL.replace(/\/+$/, '')
 
 const list = computed(() => templateList.value ?? [])
 
 // --- i18n ---
-const { t, locale, locales, setLocale } = useI18n()
-const localeOptions = computed(() => (locales.value as Array<{ code: string, name?: string }>).map(l => ({ code: l.code, name: l.name ?? l.code })))
-const onLocaleChange = async (code: string) => {
-  await setLocale(code)
-}
+const { t } = useI18n()
 
 // --- SEO head（对齐遗留 index.leaf：title/description/keywords/canonical/OG/Twitter）---
 const { gitignore } = useAppConfig()
@@ -59,36 +60,39 @@ onMounted(() => {
   const pre = route.query.templates
   if (typeof pre === 'string' && pre) {
     const ids = list.value.map(t => t.id)
-    selected.value = pre.replace(/\s/g, '+').toLowerCase().split(',').filter(t => ids.includes(t))
+    const valid = pre.replace(/\s/g, '+').toLowerCase().split(',').filter(id => ids.includes(id))
+    selected.value = valid
   }
 })
 
-const toggle = (id: string) => {
-  const index = selected.value.indexOf(id)
-  if (index >= 0) selected.value.splice(index, 1)
-  else selected.value.push(id)
-}
+// 搜索建议浮层定位（Floating UI）
+const searchRef = ref<HTMLElement>()
+const suggestRef = ref<HTMLElement>()
+const { floatingStyles } = useFloating(searchRef, suggestRef, {
+  placement: 'bottom-start',
+  middleware: [offset(4)],
+  whileElementsMounted: autoUpdate,
+})
 
-const files = computed(() => selected.value.join(','))
-
-// 对齐 generateGitIgnore()：跳转 `${BASE_PREFIX}/api/${files}`
-const create = () => {
-  if (!files.value) return
+function create() {
+  if (!files.value)
+    return
   window.location.href = `${baseURL}/api/${files.value}`
 }
 
-// 对齐 generateGitIgnoreFile()：跳转 `${BASE_PREFIX}/api/f/${files}`
-const download = () => {
-  if (!files.value) return
+function download() {
+  if (!files.value)
+    return
   window.location.href = `${baseURL}/api/f/${files.value}`
 }
 
 // 对齐 app.js：Ctrl/Cmd+Enter 生成；单独 Enter 添加当前第一个建议
-const onKeydown = (e: KeyboardEvent) => {
+function onKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
     e.preventDefault()
     create()
-  } else if (e.key === 'Enter' && filtered.value.length > 0) {
+  }
+  else if (e.key === 'Enter' && filtered.value.length > 0) {
     e.preventDefault()
     toggle(filtered.value[0].id)
   }
@@ -96,237 +100,340 @@ const onKeydown = (e: KeyboardEvent) => {
 </script>
 
 <template>
-  <main class="container">
-    <header class="header">
-      <h1 class="logo">gitignore.io</h1>
-      <nav class="nav">
-        <select class="locale-select" :value="locale" aria-label="Language" @change="onLocaleChange(($event.target as HTMLSelectElement).value)">
-          <option v-for="l in localeOptions" :key="l.code" :value="l.code">{{ l.name }}</option>
-        </select>
-        <a :href="gitignore.sourceCodeUrl" target="_blank" rel="noopener">{{ t('sourceCodeTitle') }}</a>
-        <a :href="gitignore.commandLineDocsUrl" target="_blank" rel="noopener">{{ t('commandLineTitle') }}</a>
-      </nav>
-    </header>
+  <div class="masthead">
+    <div class="masthead__top">
+      <img
+        :srcset="`${baseURL}/img/gitignore-logo-horizontal.png 370w, ${baseURL}/img/gitignore-logo-horizontal@2x.png 740w`"
+        :src="`${baseURL}/img/gitignore-logo-horizontal.png`"
+        width="370"
+        height="50"
+        sizes="(min-width: 960px) 740px, 100vw"
+        alt="gitignore.io"
+      >
+      <h2 class="masthead__subtitle">
+        {{ t('subtitle') }}
+      </h2>
+    </div>
 
-    <section class="masthead">
-      <p class="subtitle">{{ t('subtitle') }}</p>
-
-      <div class="search" role="combobox" aria-expanded="query.length > 0">
-        <input
-          v-model="query"
-          type="search"
-          class="search-input"
-          :placeholder="t('searchPlaceholder')"
-          :aria-label="t('searchPlaceholder')"
-          autocomplete="off"
-          @keydown="onKeydown"
-        >
-        <button class="btn btn-primary" type="button" @click="create">{{ t('searchGo') }}</button>
-        <button class="btn btn-secondary" type="button" @click="download">{{ t('searchDownload') }}</button>
+    <div ref="searchRef" class="masthead__search">
+      <input
+        v-model="query"
+        type="search"
+        class="masthead__input"
+        :placeholder="t('searchPlaceholder')"
+        :aria-label="t('searchPlaceholder')"
+        autocomplete="off"
+        role="combobox"
+        aria-expanded="query.length > 0"
+        @keydown="onKeydown"
+      >
+      <div class="masthead__actions">
+        <button class="masthead__btn masthead__btn--primary" type="button" @click="create">
+          {{ t('searchGo') }}
+        </button>
+        <button class="masthead__btn masthead__btn--secondary" type="button" @click="download">
+          {{ t('searchDownload') }}
+        </button>
       </div>
 
-      <ul v-if="selected.length" class="chips" aria-label="Selected templates">
-        <li v-for="id in selected" :key="id" class="chip" @click="toggle(id)" :title="`Remove ${id}`">
-          {{ id }}<span class="chip-remove">×</span>
-        </li>
-      </ul>
-
-      <ul v-if="query && filtered.length" class="suggest" role="listbox">
+      <ul
+        v-if="query && filtered.length"
+        ref="suggestRef"
+        class="masthead__suggest"
+        role="listbox"
+        :style="floatingStyles"
+      >
         <li
-          v-for="t in filtered"
-          :key="t.id"
-          class="suggest-item"
-          :class="{ picked: selected.includes(t.id) }"
+          v-for="item in filtered"
+          :key="item.id"
+          class="masthead__suggest-item"
+          :class="{ 'masthead__suggest-item--picked': selected.includes(item.id) }"
           role="option"
-          :aria-selected="selected.includes(t.id)"
-          @click="toggle(t.id)"
+          :aria-selected="selected.includes(item.id)"
+          @click="toggle(item.id)"
         >
-          {{ t.text }}
-          <span v-if="selected.includes(t.id)" class="suggest-check">✓</span>
+          {{ item.text }}
+          <span v-if="selected.includes(item.id)" class="masthead__suggest-check">✓</span>
         </li>
       </ul>
-    </section>
+    </div>
 
-    <footer class="footer">
+    <ul v-if="selected.length" class="masthead__chips" aria-label="Selected templates">
+      <li
+        v-for="id in selected"
+        :key="id"
+        class="masthead__chip"
+        :title="`Remove ${id}`"
+        @click="toggle(id)"
+      >
+        {{ id }}<span class="masthead__chip-remove">×</span>
+      </li>
+    </ul>
+
+    <nav class="masthead__nav">
+      <a :href="gitignore.sourceCodeUrl" target="_blank" rel="noopener">{{ t('sourceCodeTitle') }}</a>
+      <a :href="gitignore.commandLineDocsUrl" target="_blank" rel="noopener">{{ t('commandLineTitle') }}</a>
+    </nav>
+
+    <footer class="masthead__footer">
       {{ t('footer', { templateCount: list.length }) }}
     </footer>
-  </main>
+  </div>
 </template>
 
-<style scoped>
-.container {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 2rem 1.25rem;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
-}
-
-.logo {
-  margin: 0;
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-}
-
-.nav {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  font-size: 0.875rem;
-}
-
-.nav a {
-  color: #2563eb;
-  text-decoration: none;
-}
-
-.nav a:hover {
-  text-decoration: underline;
-}
-
-.locale-select {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.375rem;
-  background: #fff;
-}
-
+<style scoped lang="scss">
+// BEM：masthead 块；@apply 按分类（布局/间距/视觉）多行使用
 .masthead {
-  margin-top: 3rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
+  // 布局
+  @apply
+    mx-auto
+    text-center;
 
-.subtitle {
-  margin: 0;
-  font-size: 1.125rem;
-  color: #475569;
-}
-
-.search {
-  display: flex;
-  gap: 0.5rem;
-  position: relative;
-}
-
-.search-input {
-  flex: 1;
-  min-width: 0;
-  padding: 0.625rem 0.875rem;
-  font-size: 1rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.5rem;
-}
-
-.search-input:focus {
-  outline: 2px solid #2563eb;
-  outline-offset: 0;
-}
-
-.btn {
-  padding: 0.625rem 1.125rem;
-  font-size: 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid transparent;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-primary {
-  background: #2563eb;
-  color: #fff;
-}
-
-.btn-primary:hover {
-  background: #1d4ed8;
-}
-
-.btn-secondary {
-  background: #f1f5f9;
-  color: #0f172a;
-  border-color: #cbd5e1;
-}
-
-.btn-secondary:hover {
-  background: #e2e8f0;
-}
-
-.chips {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.6rem 0.3rem 0.75rem;
-  background: #e0e7ff;
-  color: #1e3a8a;
-  border-radius: 999px;
-  font-size: 0.875rem;
-  cursor: pointer;
-}
-
-.chip-remove {
-  font-size: 1.05rem;
-  line-height: 1;
-  color: #6366f1;
-}
-
-.suggest {
-  list-style: none;
-  margin: 0;
-  padding: 0.375rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 0.5rem;
-  background: #fff;
-  max-height: 320px;
+  max-width: 580px;
   overflow-y: auto;
-  box-shadow: 0 8px 24px rgb(15 23 42 / 0.08);
-}
+  padding: 0 16px;
 
-.suggest-item {
-  padding: 0.5rem 0.75rem;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.9375rem;
-}
+  &__top {
+    // 布局
+    @apply
+      flex
+      flex-col
+      items-center
+      mb-6;
 
-.suggest-item:hover {
-  background: #eff6ff;
-}
+    margin-top: 120px;
 
-.suggest-item.picked {
-  background: #e0e7ff;
-  color: #1e3a8a;
-}
+    @media (min-width: 768px) {
+      margin-top: 180px;
+    }
 
-.suggest-check {
-  color: #2563eb;
-  font-weight: 700;
-}
+    @media (max-width: 320px) {
+      margin-top: 42px;
+    }
 
-.footer {
-  margin-top: auto;
-  padding-top: 2rem;
-  font-size: 0.8125rem;
-  color: #64748b;
+    img {
+      // 尺寸
+      @apply
+        w-full
+        h-auto;
+
+      max-width: 370px;
+    }
+  }
+
+  &__subtitle {
+    margin: 20px 0;
+    font-size: 16px;
+    line-height: 16px;
+    color: var(--colors-brand-darkgray);
+  }
+
+  &__search {
+    // 布局
+    @apply
+      relative
+      overflow-visible
+      flex;
+
+    gap: 8px;
+  }
+
+  &__input {
+    // 布局
+    @apply
+      flex-1
+      min-w-0;
+
+    -webkit-appearance: none;
+    height: 46px;
+    line-height: 46px;
+    border: 1px solid var(--colors-brand-lightgray);
+    border-radius: 0;
+    padding: 0 14px;
+    font-size: 16px;
+
+    &:focus {
+      outline: 2px solid var(--colors-brand-blue);
+      outline-offset: 0;
+    }
+  }
+
+  &__actions {
+    // 布局
+    @apply
+      flex
+      gap-2
+      shrink-0;
+  }
+
+  &__btn {
+    // 尺寸 + 视觉
+    @apply
+      px-4
+      h-[46px]
+      whitespace-nowrap;
+
+    font-size: 16px;
+    line-height: 46px;
+    border: 1px solid transparent;
+    border-radius: 0;
+    cursor: pointer;
+  }
+
+  &__btn--primary {
+    background-color: var(--colors-brand-green);
+    color: var(--colors-brand-white);
+
+    &:hover {
+      background-color: var(--colors-brand-darkgreen);
+    }
+  }
+
+  &__btn--secondary {
+    background-color: var(--colors-brand-semiWhite);
+    color: var(--colors-brand-black);
+    border-color: var(--colors-brand-lightgray);
+
+    &:hover {
+      background-color: var(--colors-brand-lightgray);
+    }
+  }
+
+  &__suggest {
+    // 布局
+    @apply
+      absolute
+      z-20
+      overflow-y-auto
+      list-none
+      m-0
+      p-1.5
+      text-left;
+
+    width: min(100%, 480px);
+    max-height: 320px;
+    border: 1px solid var(--colors-brand-lightgray);
+    border-radius: 6px;
+    background: var(--colors-brand-white);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+  }
+
+  &__suggest-item {
+    // 布局
+    @apply
+      flex
+      items-center
+      justify-between
+      px-3
+      py-2
+      rounded-md
+      cursor-pointer;
+
+    font-size: 15px;
+
+    &:hover {
+      background-color: rgb(32 78 207 / 0.08);
+    }
+  }
+
+  &__suggest-item--picked {
+    background-color: var(--colors-brand-lightgray);
+    color: var(--colors-brand-darkBlue);
+  }
+
+  &__suggest-check {
+    color: var(--colors-brand-blue);
+    font-weight: 700;
+  }
+
+  &__chips {
+    // 布局
+    @apply
+      flex
+      flex-wrap
+      justify-center
+      gap-2
+      list-none
+      m-0
+      p-0
+      mt-4;
+  }
+
+  &__chip {
+    // 布局 + 视觉
+    @apply
+      inline-flex
+      items-center
+      gap-1
+      px-3
+      py-0.5
+      rounded-full
+      cursor-pointer;
+
+    background-color: var(--colors-brand-lightgray);
+    color: var(--colors-brand-darkBlue);
+    font-size: 14px;
+  }
+
+  &__chip-remove {
+    font-size: 17px;
+    line-height: 1;
+    color: var(--colors-brand-darkgray);
+  }
+
+  &__nav {
+    // 布局
+    @apply
+      flex
+      flex-col
+      items-center
+      list-none
+      m-0
+      p-0
+      mt-10
+      mb-16;
+
+    @media (min-width: 576px) {
+      flex-direction: row;
+      justify-content: center;
+    }
+
+    a {
+      font-size: 16px;
+      line-height: 16px;
+      padding-bottom: 8px;
+      margin-bottom: 16px;
+
+      @media (min-width: 576px) {
+        margin-bottom: 0;
+
+        &:not(:first-child)::before {
+          display: inline-block;
+          content: '';
+          width: 1px;
+          height: 12px;
+          background-color: var(--colors-brand-gray);
+          margin: 0 21px;
+        }
+      }
+
+      &:hover,
+      &:focus {
+        text-decoration: none;
+        border-bottom: 1px solid var(--colors-brand-blue);
+      }
+    }
+  }
+
+  &__footer {
+    // 排版
+    @apply
+      mt-auto
+      pt-8
+      pb-16;
+
+    font-size: 13px;
+    color: var(--colors-brand-darkgray);
+  }
 }
 </style>

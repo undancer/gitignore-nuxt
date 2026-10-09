@@ -21,16 +21,20 @@ let cached: TemplateData | null = null
 // 统一转文本：dev 下 serverAssets 走 fs 返回 string；build 下 raw 内联返回 Uint8Array，
 // String(uint8array) 会得到字节数字串，必须用 TextDecoder 解码
 async function asText(value: unknown): Promise<string> {
-  if (typeof value === 'string') return value
-  if (value instanceof Uint8Array) return new TextDecoder().decode(value)
-  if (value instanceof ArrayBuffer) return new TextDecoder().decode(value)
+  if (typeof value === 'string')
+    return value
+  if (value instanceof Uint8Array)
+    return new TextDecoder().decode(value)
+  if (value instanceof ArrayBuffer)
+    return new TextDecoder().decode(value)
   return String(value ?? '')
 }
 
 // 加载模板数据：*.gitignore 主模板 → *.patch 追加 → *.stack 归并追加 → order 优先级
 // 与 TemplateController.init 的三步加载（parseTemplateDirectory / patchTemplates / stackTempaltes）等价
 export async function loadData(): Promise<TemplateData> {
-  if (cached) return cached
+  if (cached)
+    return cached
   // Nitro serverAssets 挂在 storage 的 assets 命名空间下（dev/build 一致）：
   // assets → templates(baseName) → 相对文件名
   const storage = useStorage('assets:templates')
@@ -56,7 +60,7 @@ export async function loadData(): Promise<TemplateData> {
       key: name.toLowerCase(),
       name,
       fileName,
-      contents: `\n### ${name} ###\n` + fileContents,
+      contents: `\n### ${name} ###\n${fileContents}`,
     }
   }
 
@@ -65,7 +69,7 @@ export async function loadData(): Promise<TemplateData> {
     const name = key.slice(0, -'.patch'.length)
     const target = templates[name.toLowerCase()]
     if (target) {
-      target.contents += `\n### ${name} Patch ###\n` + await asText(await storage.getItem(key))
+      target.contents += `\n### ${name} Patch ###\n${await asText(await storage.getItem(key))}`
     }
   }
 
@@ -75,7 +79,7 @@ export async function loadData(): Promise<TemplateData> {
     const stackKey = name.split('.')[0].toLowerCase()
     const target = templates[stackKey]
     if (target) {
-      target.contents += `\n### ${name} Stack ###\n` + await asText(await storage.getItem(key))
+      target.contents += `\n### ${name} Stack ###\n${await asText(await storage.getItem(key))}`
     }
   }
 
@@ -108,8 +112,10 @@ export function withBasePrefix(route: string): string {
 export function removeDuplicateLines(text: string): string {
   const seen = new Set<string>()
   return text.split('\n').filter((line) => {
-    if (line === '' || line.startsWith('# ')) return true
-    if (seen.has(line)) return false
+    if (line === '' || line.startsWith('# '))
+      return true
+    if (seen.has(line))
+      return false
     seen.add(line)
     return true
   }).join('\n')
@@ -120,7 +126,8 @@ export async function createIgnore(rawInput: string): Promise<{ text: string, st
   let urlDecoded: string
   try {
     urlDecoded = decodeURIComponent(rawInput)
-  } catch {
+  }
+  catch {
     return { text: `\n#!! ERROR: url decoding ${rawInput} !#\n`, status: 500 }
   }
 

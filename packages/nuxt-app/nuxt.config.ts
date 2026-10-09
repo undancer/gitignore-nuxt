@@ -13,7 +13,17 @@ export default defineNuxtConfig({
     baseURL: basePrefix ? `/${basePrefix}/` : '/',
   },
 
-  modules: ['@nuxtjs/i18n', '@nuxtjs/sitemap', '@nuxtjs/robots'],
+  modules: [
+    '@nuxtjs/i18n',
+    '@nuxtjs/sitemap',
+    '@nuxtjs/robots',
+    // 样式：UnoCSS v4（presetWind4，内置 reset）+ 全局 scss
+    '@unocss/nuxt',
+    // 常用插件：Pinia 状态管理 / VueUse composables
+    '@pinia/nuxt',
+    '@vueuse/nuxt',
+  ],
+  css: ['~/assets/css/main.scss'],
   // 站点身份（@nuxtjs/sitemap v8 经 nuxt-site-config 读取 site.url；相对 loc 自动并入 baseURL 前缀）
   site: {
     url: appConfig.gitignore.hostOrigin,

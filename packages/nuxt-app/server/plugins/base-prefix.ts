@@ -6,10 +6,12 @@ export default defineNitroPlugin((nitroApp) => {
   nitroApp.h3App.use('/', (event) => {
     const cfg = (useAppConfig() as any).gitignore ?? {}
     const prefix = (cfg.basePrefix ?? '').trim().replace(/^\/+|\/+$/g, '')
-    if (!prefix) return
+    if (!prefix)
+      return
 
     const pathname = getRequestURL(event).pathname.replace(/^\/+|\/+$/g, '')
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) return
+    if (pathname === prefix || pathname.startsWith(`${prefix}/`))
+      return
 
     setResponseStatus(event, 404, 'Not Found')
     return send(event, 'Not Found')

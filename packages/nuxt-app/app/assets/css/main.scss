@@ -1,0 +1,51 @@
+// 全局基础样式 —— 迁移自 legacy/gitignore.io/src/less/app.less（仅保留字体与全局基础，
+// 布局与组件样式按 BEM + scss scoped + UnoCSS @apply 落在各组件内）
+// 颜色统一走 uno.config theme（--colors-brand-*），此处不重复定义
+
+// Proxima Nova 字体（迁移自 legacy Public/fonts/，对齐 app.less 的 400/600 声明）
+@font-face {
+  font-display: swap;
+  font-weight: 400;
+  font-family: 'Proxima Nova';
+  font-style: normal;
+  src:
+    url('/fonts/ProximaNova-Regular.woff2') format('woff2'),
+    url('/fonts/ProximaNova-Regular.woff') format('woff'),
+    url('/fonts/ProximaNova-Regular.otf') format('opentype');
+}
+
+@font-face {
+  font-display: swap;
+  font-weight: 600;
+  font-family: 'Proxima Nova';
+  font-style: normal;
+  src:
+    url('/fonts/ProximaNova-Semibold.woff2') format('woff2'),
+    url('/fonts/ProximaNova-Semibold.woff') format('woff'),
+    url('/fonts/ProximaNova-Semibold.otf') format('opentype');
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  color: var(--colors-brand-black);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--colors-brand-blue);
+  text-decoration: none;
+
+  &:hover,
+  &:focus {
+    text-decoration: underline;
+  }
+}

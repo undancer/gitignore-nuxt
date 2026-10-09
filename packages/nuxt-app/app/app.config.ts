@@ -9,6 +9,7 @@ export default {
     basePrefix: (process.env.BASE_PREFIX ?? '').trim().replace(/^\/+|\/+$/g, ''),
 
     // 外部链接（页头导航）
+    developersUrl: 'https://www.toptal.com/developers',
     sourceCodeUrl: 'https://github.com/undancer/gitignore-nuxt',
     commandLineDocsUrl: 'https://docs.gitignore.io/install/command-line',
 

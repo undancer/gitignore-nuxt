@@ -8,14 +8,27 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "test:contract": "nuxt build && node test/contract.test.mjs && set \"BASE_PREFIX=testprefix\" && nuxt build && node test/contract.test.mjs --prefix"
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test:contract": "nuxt build && node --test test/contract.test.mjs && set \"BASE_PREFIX=testprefix\" && set \"PREFIX_MODE=1\" && nuxt build && node --test test/contract.test.mjs"
   },
   "dependencies": {
+    "@floating-ui/vue": "^2.0.1",
     "@nuxtjs/i18n": "^10.6.0",
     "@nuxtjs/robots": "^6.2.4",
     "@nuxtjs/sitemap": "^8.6.1",
+    "@pinia/nuxt": "^1.0.2",
+    "@vueuse/nuxt": "^15.0.0",
     "nuxt": "^4.6.0",
     "vue": "^3.5.43",
     "vue-router": "^5.3.1"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^9.5.1",
+    "@unocss/nuxt": "^66.10.5",
+    "@unocss/transformer-directives": "^66.10.5",
+    "eslint": "^9.39.5",
+    "sass": "^1.105.1",
+    "unocss": "^66.10.5"
   }
 }

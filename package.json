@@ -1,0 +1,5 @@
+{
+  "name": "gitignore-nuxt",
+  "private": true,
+  "packageManager": "pnpm@12.4.1"
+}

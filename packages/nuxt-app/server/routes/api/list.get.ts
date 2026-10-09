@@ -5,11 +5,12 @@ export default defineEventHandler(async (event) => {
   const { templates } = await loadData()
   const keys = Object.keys(templates).sort()
   const format = getQuery(event).format
+  const groupSize = (useAppConfig() as any).gitignore?.listGroupSize ?? 5
 
   if (format === undefined) {
     const grouped: string[] = []
-    for (let i = 0; i < keys.length; i += 5) {
-      grouped.push(keys.slice(i, i + 5).join(','))
+    for (let i = 0; i < keys.length; i += groupSize) {
+      grouped.push(keys.slice(i, i + groupSize).join(','))
     }
     return text(event, grouped.join('\n'))
   }

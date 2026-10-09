@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // gitignore.io 主页 —— 对齐遗留 index.leaf + src/js/app.js 的功能：
 // 多选模板、?templates= 预选、Create 跳转 /api/、Download 跳转 /api/f/、Ctrl/Cmd+Enter 生成
+// i18n：17 种语言（对齐遗留 Localizations/），语言切换经 cookie 持久化
 interface DropdownItem { id: string, text: string }
 
 const { data: templateList } = await useFetch<DropdownItem[]>('/dropdown/templates.json')
@@ -11,21 +12,32 @@ const baseURL = useRuntimeConfig().app.baseURL.replace(/\/+$/, '')
 
 const list = computed(() => templateList.value ?? [])
 
-// 对齐遗留 index.leaf 的 SEO head（title/description/keywords/canonical）
-const { public: { siteUrl } } = useRuntimeConfig()
-useHead({
-  title: 'gitignore.io - Create Useful .gitignore Files For Your Project',
+// --- i18n ---
+const { t, locale, locales, setLocale } = useI18n()
+const localeOptions = computed(() => (locales.value as Array<{ code: string, name?: string }>).map(l => ({ code: l.code, name: l.name ?? l.code })))
+const onLocaleChange = async (code: string) => {
+  await setLocale(code)
+}
+
+// --- SEO head（对齐遗留 index.leaf：title/description/keywords/canonical）---
+const { gitignore } = useAppConfig()
+const canonicalUrl = computed(() => {
+  const { hostOrigin, basePrefix } = gitignore
+  return basePrefix ? `${hostOrigin}/${basePrefix}` : hostOrigin
+})
+useHead(() => ({
+  title: t('title'),
   meta: [
-    { name: 'description', content: `Create useful .gitignore files for your project by selecting from ${list.value.length} Operating System, IDE, and Programming Language .gitignore templates` },
+    { name: 'description', content: t('description', { templateCount: list.value.length }) },
     { name: 'keywords', content: 'gitignore,.gitignore,git,ignore,file,create,make,generate,build,automatic,programmatic,command line,cli' },
   ],
-  link: [{ rel: 'canonical', href: siteUrl }],
-})
+  link: [{ rel: 'canonical', href: canonicalUrl.value }],
+}))
 
 const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   const source = q ? list.value.filter(t => t.id.includes(q) || t.text.toLowerCase().includes(q)) : list.value
-  return source.slice(0, 20)
+  return source.slice(0, gitignore.suggestLimit)
 })
 
 // ?templates= 预选（只保留有效 id，对齐 app.js 的 validPreFilledSearchTerms）
@@ -75,26 +87,29 @@ const onKeydown = (e: KeyboardEvent) => {
     <header class="header">
       <h1 class="logo">gitignore.io</h1>
       <nav class="nav">
-        <a href="https://github.com/undancer/gitignore-nuxt" target="_blank" rel="noopener">Source Code</a>
-        <a href="https://docs.gitignore.io/install/command-line" target="_blank" rel="noopener">Command Line Docs</a>
+        <select class="locale-select" :value="locale" aria-label="Language" @change="onLocaleChange(($event.target as HTMLSelectElement).value)">
+          <option v-for="l in localeOptions" :key="l.code" :value="l.code">{{ l.name }}</option>
+        </select>
+        <a :href="gitignore.sourceCodeUrl" target="_blank" rel="noopener">{{ t('sourceCodeTitle') }}</a>
+        <a :href="gitignore.commandLineDocsUrl" target="_blank" rel="noopener">{{ t('commandLineTitle') }}</a>
       </nav>
     </header>
 
     <section class="masthead">
-      <p class="subtitle">Create useful .gitignore files for your project</p>
+      <p class="subtitle">{{ t('subtitle') }}</p>
 
       <div class="search" role="combobox" aria-expanded="query.length > 0">
         <input
           v-model="query"
           type="search"
           class="search-input"
-          placeholder="Search Operating Systems, IDEs, or Programming Languages"
-          aria-label="Search templates"
+          :placeholder="t('searchPlaceholder')"
+          :aria-label="t('searchPlaceholder')"
           autocomplete="off"
           @keydown="onKeydown"
         >
-        <button class="btn btn-primary" type="button" @click="create">Create</button>
-        <button class="btn btn-secondary" type="button" @click="download">Download File</button>
+        <button class="btn btn-primary" type="button" @click="create">{{ t('searchGo') }}</button>
+        <button class="btn btn-secondary" type="button" @click="download">{{ t('searchDownload') }}</button>
       </div>
 
       <ul v-if="selected.length" class="chips" aria-label="Selected templates">
@@ -120,7 +135,7 @@ const onKeydown = (e: KeyboardEvent) => {
     </section>
 
     <footer class="footer">
-      {{ list.length }} Operating System, IDE, and Programming Language .gitignore templates
+      {{ t('footer', { templateCount: list.length }) }}
     </footer>
   </main>
 </template>
@@ -150,6 +165,7 @@ const onKeydown = (e: KeyboardEvent) => {
 
 .nav {
   display: flex;
+  align-items: center;
   gap: 1rem;
   font-size: 0.875rem;
 }
@@ -161,6 +177,14 @@ const onKeydown = (e: KeyboardEvent) => {
 
 .nav a:hover {
   text-decoration: underline;
+}
+
+.locale-select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.375rem;
+  background: #fff;
 }
 
 .masthead {

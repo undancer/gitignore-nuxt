@@ -2,5 +2,6 @@
 export default defineEventHandler(async (event) => {
   const types = getRouterParam(event, 'types') ?? ''
   const { text: body, status } = await createIgnore(types)
-  return text(event, body, status, { 'content-disposition': 'attachment; filename="gitignore"' })
+  const filename = (useAppConfig() as any).gitignore?.downloadFilename ?? 'gitignore'
+  return text(event, body, status, { 'content-disposition': `attachment; filename="${filename}"` })
 })

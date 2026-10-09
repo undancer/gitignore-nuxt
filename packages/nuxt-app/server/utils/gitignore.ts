@@ -78,16 +78,24 @@ export async function loadData(): Promise<TemplateData> {
   return cached
 }
 
-// 对应 UrlResolver.getCanonicalUrl()：HOST_ORIGIN（默认 toptal.com）+ BASE_PREFIX
-export function getCanonicalUrl(): string {
-  const hostOrigin = (process.env.HOST_ORIGIN ?? 'https://www.toptal.com').trim().replace(/^\/+|\/+$/g, '')
-  const prefix = process.env.BASE_PREFIX?.trim().replace(/^\/+|\/+$/g, '')
-  return prefix ? `${hostOrigin}/${prefix}` : hostOrigin
+// 应用配置（来自 app/app.config.ts，构建时 env 覆盖）
+export function getGitignoreConfig(): { hostOrigin: string, basePrefix: string } {
+  const cfg = (useAppConfig() as any).gitignore ?? {}
+  return {
+    hostOrigin: (cfg.hostOrigin ?? 'https://www.toptal.com').trim().replace(/^\/+|\/+$/g, ''),
+    basePrefix: (cfg.basePrefix ?? '').trim().replace(/^\/+|\/+$/g, ''),
+  }
 }
 
-// 对应 UrlResolver.withBasePrefix()
+// 对应 UrlResolver.getCanonicalUrl()：HOST_ORIGIN（默认 toptal.com）+ BASE_PREFIX
+export function getCanonicalUrl(): string {
+  const { hostOrigin, basePrefix } = getGitignoreConfig()
+  return basePrefix ? `${hostOrigin}/${basePrefix}` : hostOrigin
+}
+
+// 对应 UrlResolver.withBasePrefix()：路由前缀（basePrefix 空时原样返回）
 export function withBasePrefix(route: string): string {
-  const prefix = process.env.BASE_PREFIX?.trim().replace(/^\/+|\/+$/g, '')
+  const prefix = getGitignoreConfig().basePrefix
   return prefix ? `/${prefix}${route}` : route
 }
 

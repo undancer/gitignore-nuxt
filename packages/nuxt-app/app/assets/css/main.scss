@@ -28,16 +28,37 @@
 html,
 body {
   height: 100%;
+  background-color: var(--colors-brand-white); // @background（variables.less 为白色，深色模式下不透出浏览器深色）
+}
+
+// 品牌色 CSS 变量显式声明（对齐 uno.config theme.colors.brand）：
+// UnoCSS v4 按需生成变量——仅当工具类名（如 bg-brand-green）被使用时才生成对应变量，
+// scss 中的 var(--colors-brand-*) 引用不触发生成，导致按钮/tag/边框颜色缺失（透明）。
+// 这里兜底声明全部品牌变量，保证 var() 引用始终有效。
+:root {
+  --colors-brand-black: #000000;
+  --colors-brand-white: #ffffff;
+  --colors-brand-semiWhite: #ebeced;
+  --colors-brand-blue: #204ecf;
+  --colors-brand-green: #00cc83;
+  --colors-brand-darkgreen: #00a369;
+  --colors-brand-darkgray: #455065;
+  --colors-brand-gray: #a6abb5;
+  --colors-brand-lightgray: #d8d9dc;
+  --colors-brand-darkBlue: #0f256e;
 }
 
 body {
   margin: 0;
   min-width: 320px;
-  color: var(--colors-brand-black);
+  color: var(--colors-brand-black); // @text
   font-family: var(--font-sans);
   font-size: 16px;
-  font-weight: 400;
+  font-weight: 400; // @weight-regular
   line-height: 1.5;
+  // 对齐 app.less：body 为 flex column，main 撑满剩余高度
+  display: flex;
+  flex-direction: column;
 }
 
 a {

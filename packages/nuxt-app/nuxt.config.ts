@@ -11,6 +11,12 @@ export default defineNuxtConfig({
   // 子路径挂载：无前缀时 '/'；有前缀时 '/{basePrefix}/'
   app: {
     baseURL: basePrefix ? `/${basePrefix}/` : '/',
+    // 明确声明 light 配色，防止系统深色模式下浏览器自动深色化页面（legacy 为白底设计）
+    head: {
+      meta: [
+        { name: 'color-scheme', content: 'light' },
+      ],
+    },
   },
 
   modules: [

@@ -13,7 +13,15 @@ export default defineNuxtConfig({
     baseURL: basePrefix ? `/${basePrefix}/` : '/',
   },
 
-  modules: ['@nuxtjs/i18n'],
+  modules: ['@nuxtjs/i18n', '@nuxtjs/sitemap', '@nuxtjs/robots'],
+  // 站点身份（@nuxtjs/sitemap v8 经 nuxt-site-config 读取 site.url；相对 loc 自动并入 baseURL 前缀）
+  site: {
+    url: appConfig.gitignore.hostOrigin,
+  },
+  robots: {
+    // 默认允许抓取；Sitemap 由 sitemap 模块的 robots:config hook 自动追加
+    rules: [{ UserAgent: '*', Allow: '/' }],
+  },
   i18n: {
     // 对齐遗留 Localizations/ 的 17 种语言
     locales: [

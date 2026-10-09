@@ -18,8 +18,13 @@ export interface TemplateData {
 
 let cached: TemplateData | null = null
 
+// 统一转文本：dev 下 serverAssets 走 fs 返回 string；build 下 raw 内联返回 Uint8Array，
+// String(uint8array) 会得到字节数字串，必须用 TextDecoder 解码
 async function asText(value: unknown): Promise<string> {
-  return typeof value === 'string' ? value : String(value ?? '')
+  if (typeof value === 'string') return value
+  if (value instanceof Uint8Array) return new TextDecoder().decode(value)
+  if (value instanceof ArrayBuffer) return new TextDecoder().decode(value)
+  return String(value ?? '')
 }
 
 // 加载模板数据：*.gitignore 主模板 → *.patch 追加 → *.stack 归并追加 → order 优先级

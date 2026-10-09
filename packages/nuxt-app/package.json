@@ -7,10 +7,13 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "test:contract": "nuxt build && node test/contract.test.mjs && set \"BASE_PREFIX=testprefix\" && nuxt build && node test/contract.test.mjs --prefix"
   },
   "dependencies": {
     "@nuxtjs/i18n": "^10.6.0",
+    "@nuxtjs/robots": "^6.2.4",
+    "@nuxtjs/sitemap": "^8.6.1",
     "nuxt": "^4.6.0",
     "vue": "^3.5.43",
     "vue-router": "^5.3.1"

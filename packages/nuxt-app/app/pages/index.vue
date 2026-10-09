@@ -19,19 +19,32 @@ const onLocaleChange = async (code: string) => {
   await setLocale(code)
 }
 
-// --- SEO head（对齐遗留 index.leaf：title/description/keywords/canonical）---
+// --- SEO head（对齐遗留 index.leaf：title/description/keywords/canonical/OG/Twitter）---
 const { gitignore } = useAppConfig()
 const canonicalUrl = computed(() => {
   const { hostOrigin, basePrefix } = gitignore
   return basePrefix ? `${hostOrigin}/${basePrefix}` : hostOrigin
 })
+const description = computed(() => t('description', { templateCount: list.value.length }))
+const ogImage = computed(() => `${canonicalUrl.value}/img/preview@2x.png`)
 useHead(() => ({
   title: t('title'),
   meta: [
-    { name: 'description', content: t('description', { templateCount: list.value.length }) },
+    { name: 'description', content: description.value },
     { name: 'keywords', content: 'gitignore,.gitignore,git,ignore,file,create,make,generate,build,automatic,programmatic,command line,cli' },
+    // Open Graph / Twitter（对齐遗留 index.leaf 的社交分享 meta）
+    { property: 'og:type', content: 'website' },
+    { property: 'og:title', content: 'gitignore.io' },
+    { property: 'og:description', content: description.value },
+    { property: 'og:image', content: ogImage.value },
+    { property: 'og:url', content: canonicalUrl.value },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:site', content: '@toptal' },
   ],
-  link: [{ rel: 'canonical', href: canonicalUrl.value }],
+  link: [
+    { rel: 'canonical', href: canonicalUrl.value },
+    { rel: 'icon', href: `${baseURL}/favicon.ico`, type: 'image/x-icon' },
+  ],
 }))
 
 const filtered = computed(() => {

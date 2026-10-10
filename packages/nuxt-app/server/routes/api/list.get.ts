@@ -2,7 +2,7 @@
 // 无 format：按键排序，每 5 个一组逗号连接、组间换行
 // ?format=lines：每行一个 key；?format=json：全部模板模型 JSON；其他：500
 export default defineEventHandler(async (event) => {
-  const { templates } = await loadData()
+  const { templates } = await loadData(event)
   const keys = Object.keys(templates).sort()
   const format = getQuery(event).format
   const groupSize = (useAppConfig() as any).gitignore?.listGroupSize ?? 5

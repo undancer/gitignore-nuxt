@@ -28,7 +28,16 @@ export default defineNuxtConfig({
     // 常用插件：Pinia 状态管理 / VueUse composables
     '@pinia/nuxt',
     '@vueuse/nuxt',
+    // 内容管理：gitignore 模板由 Nuxt Content 索引（content/templates，自定义 transformer）
+    '@nuxt/content',
   ],
+  content: {
+    build: {
+      // 自定义 transformer：接管 .gitignore/.patch/.stack/.txt(order) 扩展名
+      // 注意：Nuxt 4 的 '~' alias 指向 srcDir(app/)，项目根的 transformers/ 需用 '~~'（rootDir）
+      transformers: ['~~/transformers/gitignore'],
+    },
+  },
   css: ['~/assets/css/main.scss'],
   // 站点身份（@nuxtjs/sitemap v8 经 nuxt-site-config 读取 site.url；相对 loc 自动并入 baseURL 前缀）
   site: {
@@ -77,10 +86,5 @@ export default defineNuxtConfig({
   // 用跨平台分隔符的正则强制内联 nuxt/dist 修复。
   nitro: {
     externals: { inline: [/[\\/]node_modules[\\/]nuxt[\\/]dist[\\/]/] },
-    // 挂载 gitignore 模板数据目录（660 个模板 + order + patch + stack），
-    // 运行时通过 useStorage('templates') 读取，构建时复制进 .output/server/assets
-    serverAssets: [
-      { baseName: 'templates', dir: './server/templates' },
-    ],
   },
 })

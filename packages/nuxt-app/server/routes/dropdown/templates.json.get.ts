@@ -1,7 +1,7 @@
 // GET /dropdown/templates.json —— select2 下拉数据源（对齐 SiteHandlers.createDropdownTemplates）
 // [{ id: key, text: 文件名 }]，key 按长度升序、同长字母序；?term= 过滤 key 包含
 export default defineEventHandler(async (event) => {
-  const { templates } = await loadData()
+  const { templates } = await loadData(event)
   const term = getQuery(event).term
   const query = typeof term === 'string' ? term : undefined
 

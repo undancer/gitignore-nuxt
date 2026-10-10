@@ -2,6 +2,8 @@
 // 遗留参考: legacy/gitignore.io/Sources/App/Controllers/TemplateController.swift
 //          legacy/gitignore.io/Sources/App/RouteHandlers/APIRouteHandlers.swift
 //          legacy/gitignore.io/Sources/App/Extensions/*
+import type { H3Event } from 'h3'
+import { queryCollection } from '@nuxt/content/server'
 
 export interface IgnoreTemplateModel {
   key: string
@@ -18,68 +20,52 @@ export interface TemplateData {
 
 let cached: TemplateData | null = null
 
-// 统一转文本：dev 下 serverAssets 走 fs 返回 string；build 下 raw 内联返回 Uint8Array，
-// String(uint8array) 会得到字节数字串，必须用 TextDecoder 解码
-async function asText(value: unknown): Promise<string> {
-  if (typeof value === 'string')
-    return value
-  if (value instanceof Uint8Array)
-    return new TextDecoder().decode(value)
-  if (value instanceof ArrayBuffer)
-    return new TextDecoder().decode(value)
-  return String(value ?? '')
-}
-
-// 加载模板数据：*.gitignore 主模板 → *.patch 追加 → *.stack 归并追加 → order 优先级
+// 加载模板数据：Nuxt Content 的 templates collection（content/templates，自定义 transformer 解析）
+// .gitignore 主模板 → *.patch 追加 → *.stack 归并追加 → order 优先级
 // 与 TemplateController.init 的三步加载（parseTemplateDirectory / patchTemplates / stackTempaltes）等价
-export async function loadData(): Promise<TemplateData> {
+export async function loadData(event: H3Event): Promise<TemplateData> {
   if (cached)
     return cached
-  // Nitro serverAssets 挂在 storage 的 assets 命名空间下（dev/build 一致）：
-  // assets → templates(baseName) → 相对文件名
-  const storage = useStorage('assets:templates')
-  const keys = await storage.getKeys()
+  const items = await queryCollection(event, 'templates').all() as any[]
 
   // parseFile(orderFile) —— order 优先级，去注释/空行，按行号编号
   const order: Record<string, number> = {}
-  const orderRaw = await asText(await storage.getItem('order'))
-  orderRaw
-    .replace(/\r\n/g, '\n')
-    .split('\n')
-    .map(line => line.trim().toLowerCase())
-    .filter(line => !line.startsWith('#') && line !== '')
-    .forEach((line, offset) => { order[line] = offset })
-
   // parseTemplateDirectory —— *.gitignore，CRLF 归一，contents 带 "### {name} ###" 头
   const templates: Record<string, IgnoreTemplateModel> = {}
-  for (const key of keys.filter(k => k.endsWith('.gitignore'))) {
-    const fileName = key
-    const name = fileName.slice(0, -'.gitignore'.length)
-    const fileContents = (await asText(await storage.getItem(key))).replace(/\r\n/g, '\n')
-    templates[name.toLowerCase()] = {
-      key: name.toLowerCase(),
-      name,
-      fileName,
-      contents: `\n### ${name} ###\n${fileContents}`,
-    }
-  }
 
-  // patchTemplates —— *.patch 追加到同名模板
-  for (const key of keys.filter(k => k.endsWith('.patch'))) {
-    const name = key.slice(0, -'.patch'.length)
-    const target = templates[name.toLowerCase()]
-    if (target) {
-      target.contents += `\n### ${name} Patch ###\n${await asText(await storage.getItem(key))}`
+  for (const item of items) {
+    const { kind, name, stem, contents } = item
+    if (kind === 'order') {
+      contents
+        .replace(/\r\n/g, '\n')
+        .split('\n')
+        .map((line: string) => line.trim().toLowerCase())
+        .filter((line: string) => !line.startsWith('#') && line !== '')
+        .forEach((line: string, offset: number) => { order[line] = offset })
     }
-  }
-
-  // stackTempaltes —— *.stack 按文件名点号第一部分归并（如 LAMP.PHP.stack → lamp）
-  for (const key of keys.filter(k => k.endsWith('.stack'))) {
-    const name = key.slice(0, -'.stack'.length)
-    const stackKey = name.split('.')[0].toLowerCase()
-    const target = templates[stackKey]
-    if (target) {
-      target.contents += `\n### ${name} Stack ###\n${await asText(await storage.getItem(key))}`
+    else if (kind === 'gitignore') {
+      const key = stem.toLowerCase()
+      templates[key] = {
+        key,
+        name: stem,
+        fileName: name,
+        contents: `\n### ${stem} ###\n${contents}`,
+      }
+    }
+    else if (kind === 'patch') {
+      // patchTemplates —— *.patch 追加到同名模板
+      const target = templates[stem.toLowerCase()]
+      if (target) {
+        target.contents += `\n### ${stem} Patch ###\n${contents}`
+      }
+    }
+    else if (kind === 'stack') {
+      // stackTempaltes —— *.stack 按文件名点号第一部分归并（如 LAMP.PHP.stack → lamp）
+      const stackKey = stem.split('.')[0].toLowerCase()
+      const target = templates[stackKey]
+      if (target) {
+        target.contents += `\n### ${stem} Stack ###\n${contents}`
+      }
     }
   }
 
@@ -122,7 +108,7 @@ export function removeDuplicateLines(text: string): string {
 }
 
 // 对应 APIHandlers.createTemplate()：生成带头尾注释、按 order 排序、去重的 .gitignore 文本
-export async function createIgnore(rawInput: string): Promise<{ text: string, status: 200 | 404 | 500 }> {
+export async function createIgnore(rawInput: string, event: H3Event): Promise<{ text: string, status: 200 | 404 | 500 }> {
   let urlDecoded: string
   try {
     urlDecoded = decodeURIComponent(rawInput)
@@ -131,7 +117,7 @@ export async function createIgnore(rawInput: string): Promise<{ text: string, st
     return { text: `\n#!! ERROR: url decoding ${rawInput} !#\n`, status: 500 }
   }
 
-  const data = await loadData()
+  const data = await loadData(event)
   const canonical = getCanonicalUrl()
   let status: 200 | 404 | 500 = 200
 

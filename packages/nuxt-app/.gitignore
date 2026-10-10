@@ -5,6 +5,8 @@
 .nitro
 .cache
 dist
+# Nuxt Content 生产数据库（由 build 生成，不入库）
+contents.sqlite
 
 # Node dependencies
 node_modules
